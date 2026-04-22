@@ -11,16 +11,35 @@ class TransaksiController extends Controller
     public function index(Request $request)
     {
         $query = Transaksi::query();
+        
         if ($request->has('search') && $request->search != '') {
             $query->where('keterangan', 'like', '%' . $request->search . '%');
         }
+
+        if ($request->has('jenis') && $request->jenis != '') {
+            $query->where('jenis', $request->jenis);
+        }
+
+        if ($request->has('bulan') && $request->bulan != '') {
+            $parts = explode('-', $request->bulan);
+            if(count($parts) == 2) {
+                $query->whereYear('tanggal', $parts[0])->whereMonth('tanggal', $parts[1]);
+            }
+        }
+
         $data = $query->orderBy('tanggal', 'desc')->get();
         
-        $pemasukan = Transaksi::where('jenis', 'masuk')->sum('jumlah');
-        $pengeluaran = Transaksi::where('jenis', 'keluar')->sum('jumlah');
-        $saldo = $pemasukan - $pengeluaran;
+        $pemasukanTotal = Transaksi::where('jenis', 'masuk')->sum('jumlah');
+        $pengeluaranTotal = Transaksi::where('jenis', 'keluar')->sum('jumlah');
+        $saldo = $pemasukanTotal - $pengeluaranTotal;
 
-        return view('index', compact('data', 'saldo'));
+        $pemasukanFilter = $data->where('jenis', 'masuk')->sum('jumlah');
+        $pengeluaranFilter = $data->where('jenis', 'keluar')->sum('jumlah');
+
+        $pemasukanBulanIni = Transaksi::where('jenis', 'masuk')->whereMonth('tanggal', date('m'))->whereYear('tanggal', date('Y'))->sum('jumlah');
+        $pengeluaranBulanIni = Transaksi::where('jenis', 'keluar')->whereMonth('tanggal', date('m'))->whereYear('tanggal', date('Y'))->sum('jumlah');
+
+        return view('index', compact('data', 'saldo', 'pemasukanFilter', 'pengeluaranFilter', 'pemasukanBulanIni', 'pengeluaranBulanIni'));
     }
 
     public function create()
